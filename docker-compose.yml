@@ -1,0 +1,48 @@
+# CNPJ Data Pipeline
+#
+# Usage:
+#   docker compose up -d                              # Start services
+#   docker exec cnpj-pipeline cnpj-pipeline --list    # List available months
+#   docker exec cnpj-pipeline cnpj-pipeline            # Process latest month
+#   docker compose down                               # Stop services
+
+services:
+  pipeline:
+    build: .
+    container_name: cnpj-pipeline
+    # Keep container up for `docker exec ... cnpj-pipeline` (image ENTRYPOINT is for standalone `docker run`)
+    entrypoint: ["/bin/sh", "-c"]
+    command: "tail -f /dev/null"
+    env_file: .env
+    environment:
+      # Keep PostgreSQL output when using compose (image defaults to parquet for standalone use)
+      OUTPUT_FORMAT: postgres
+      # Override DATABASE_URL for container networking
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/cnpj
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./temp:/app/temp
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: cnpj-pipeline-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cnpj
+    ports:
+      - "5435:5432"
+    volumes:
+      - cnpj_pipeline_data:/var/lib/postgresql/data
+      - ./initial.sql:/docker-entrypoint-initdb.d/initial.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cnpj_pipeline_data:
