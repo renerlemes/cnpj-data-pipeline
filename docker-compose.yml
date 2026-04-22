@@ -3,19 +3,16 @@
 #
 # Opcional: copie .env.example -> .env para ajustar BATCH_SIZE, workers etc. (sem .env, variáveis em environment abaixo bastam)
 #
-# Uso:
-#   docker compose -f docker-compose.hub.yml pull
-#   docker compose -f docker-compose.hub.yml up -d
-#   docker exec cnpj-pipeline cnpj-pipeline --list
-#   docker exec cnpj-pipeline cnpj-pipeline
-#   docker compose -f docker-compose.hub.yml down
+# Uso (sobe o Postgres, depois roda cnpj-pipeline = main.py com OUTPUT_FORMAT/ DATABASE_URL abaixo):
+#   docker compose up
+#   docker compose run --rm pipeline cnpj-pipeline --list   # só listar meses (exemplo)
+#   docker compose down
 
 services:
   pipeline:
     image: 386210/cnpj-data-pipeline:latest
     container_name: cnpj-pipeline
-    entrypoint: ["/bin/sh", "-c"]
-    command: "tail -f /dev/null"
+    # Usa o ENTRYPOINT da imagem: cnpj-pipeline (script do main.py)
     env_file:
       - path: .env
         required: false
