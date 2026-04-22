@@ -29,6 +29,8 @@ class TestFromEnv:
         assert cfg.output_format == "postgres"
         assert cfg.parquet_output_dir == "./parquet"
         assert cfg.post_file_command == ""
+        assert cfg.apply_db_schema is True
+        assert cfg.initial_schema_path == ""
 
     def test_env_vars_override_defaults(self):
         """Environment variables should override default values."""

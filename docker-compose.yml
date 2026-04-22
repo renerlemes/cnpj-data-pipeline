@@ -1,23 +1,26 @@
-# CNPJ Data Pipeline
+# CNPJ Data Pipeline (imagem publicada no Docker Hub)
+# https://hub.docker.com/r/386210/cnpj-data-pipeline
 #
-# Usage:
-#   docker compose up -d                              # Start services
-#   docker exec cnpj-pipeline cnpj-pipeline --list    # List available months
-#   docker exec cnpj-pipeline cnpj-pipeline            # Process latest month
-#   docker compose down                               # Stop services
+# Opcional: copie .env.example -> .env para ajustar BATCH_SIZE, workers etc. (sem .env, variáveis em environment abaixo bastam)
+#
+# Uso:
+#   docker compose -f docker-compose.hub.yml pull
+#   docker compose -f docker-compose.hub.yml up -d
+#   docker exec cnpj-pipeline cnpj-pipeline --list
+#   docker exec cnpj-pipeline cnpj-pipeline
+#   docker compose -f docker-compose.hub.yml down
 
 services:
   pipeline:
-    build: .
+    image: 386210/cnpj-data-pipeline:latest
     container_name: cnpj-pipeline
-    # Keep container up for `docker exec ... cnpj-pipeline` (image ENTRYPOINT is for standalone `docker run`)
     entrypoint: ["/bin/sh", "-c"]
     command: "tail -f /dev/null"
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      # Keep PostgreSQL output when using compose (image defaults to parquet for standalone use)
       OUTPUT_FORMAT: postgres
-      # Override DATABASE_URL for container networking
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/cnpj
     depends_on:
       postgres:

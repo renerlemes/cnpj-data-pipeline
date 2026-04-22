@@ -327,3 +327,15 @@ class TestUpsertFromTemp:
         sql = mock_cur.execute.call_args[0][0]
         assert "DO NOTHING" in sql
         assert "DO UPDATE" not in sql
+
+
+class TestSchemaSqlParsing:
+    """SQL file parsing for apply_initial_schema."""
+
+    def test_iter_drops_empty_and_comment_only(self):
+        from database import _iter_sql_statements_from_file
+
+        assert _iter_sql_statements_from_file("-- x\n\n") == []
+        out = _iter_sql_statements_from_file("CREATE TABLE t (a int);")
+        assert len(out) == 1
+        assert "CREATE TABLE t" in out[0]

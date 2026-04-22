@@ -171,7 +171,11 @@ def main():
         parquet = ParquetWriter(config.parquet_output_dir)
         logger.info(f"Parquet mode: output to {config.parquet_output_dir}")
     else:
-        from database import Database
+        from database import Database, apply_initial_schema
+
+        apply_flag = getattr(config, "apply_db_schema", True)
+        if isinstance(apply_flag, bool) and apply_flag:
+            apply_initial_schema(config.database_url, getattr(config, "initial_schema_path", ""))
 
         db = Database(config.database_url, retry_attempts=config.retry_attempts, retry_delay=config.retry_delay)
 

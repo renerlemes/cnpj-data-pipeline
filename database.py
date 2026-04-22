@@ -3,6 +3,7 @@
 import io
 import logging
 import time
+from pathlib import Path
 from typing import List, Set
 from urllib.parse import urlparse
 
@@ -10,6 +11,65 @@ import polars as pl
 import psycopg2
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_comment_lines_from_block(block: str) -> str:
+    """Remove blank lines and full-line -- comments from a SQL block."""
+    lines: list[str] = []
+    for line in block.splitlines():
+        s = line.strip()
+        if not s or s.startswith("--"):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
+def _iter_sql_statements_from_file(content: str) -> list[str]:
+    """Split on ';' and drop empty / comment-only fragments."""
+    return [b for p in content.split(";") if (b := _strip_comment_lines_from_block(p))]
+
+
+def _resolve_initial_sql_path(path_override: str) -> Path | None:
+    if path_override.strip():
+        p = Path(path_override)
+        if p.is_file():
+            return p
+        raise FileNotFoundError(f"INITIAL_SCHEMA_PATH is not a file: {p}")
+    for candidate in (Path("/app/initial.sql"), Path(__file__).resolve().parent / "initial.sql"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _coerce_schema_path_override(path_override) -> str:
+    """Config mocks in tests may be non-strings; treat as auto-resolve."""
+    return path_override.strip() if isinstance(path_override, str) else ""
+
+
+def apply_initial_schema(database_url: str, path_override) -> None:
+    """Run initial.sql DDL (idempotent). Used when the DB has no entrypoint init (e.g. external Postgres)."""
+    path = _resolve_initial_sql_path(_coerce_schema_path_override(path_override))
+    if path is None:
+        logger.info("No initial.sql found; skipping database schema init")
+        return
+    text = path.read_text(encoding="utf-8")
+    statements = _iter_sql_statements_from_file(text)
+    if not statements:
+        logger.warning("No SQL statements parsed from %s", path)
+        return
+    temp = Database(database_url)
+    params = temp._parse_url()
+    conn = None
+    try:
+        conn = psycopg2.connect(**params)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            for statement in statements:
+                cur.execute(statement)
+        logger.info("Database schema applied from %s", path)
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 class Database:

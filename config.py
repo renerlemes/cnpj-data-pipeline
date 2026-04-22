@@ -28,6 +28,8 @@ class Config:
     post_file_command: str = ""  # Command to run after each parquet file (receives file path as arg)
     base_url: str = "https://arquivos.receitafederal.gov.br/public.php/webdav"
     share_token: str = "YggdBLfdninEJX9"
+    apply_db_schema: bool = True
+    initial_schema_path: str = ""  # empty = /app/initial.sql (Docker) or ./initial.sql (repo)
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -49,6 +51,8 @@ class Config:
             post_file_command=os.getenv("POST_FILE_COMMAND", ""),
             base_url=os.getenv("BASE_URL", "https://arquivos.receitafederal.gov.br/public.php/webdav"),
             share_token=os.getenv("SHARE_TOKEN", "YggdBLfdninEJX9"),
+            apply_db_schema=os.getenv("APPLY_DB_SCHEMA", "true").lower() == "true",
+            initial_schema_path=(p.strip() if (p := os.getenv("INITIAL_SCHEMA_PATH", "")) else ""),
         )
 
 
